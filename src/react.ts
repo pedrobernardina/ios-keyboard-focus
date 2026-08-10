@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 import {
   type HandoverOptions,
@@ -58,6 +58,8 @@ export function useKeyboardFocus(
     sessionRef.current?.cancel();
     sessionRef.current = null;
   }, []);
+
+  useEffect(() => cancel, [cancel]);
 
   return { prime, register, cancel };
 }

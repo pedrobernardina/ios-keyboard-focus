@@ -146,8 +146,24 @@ There is no adapter and none is needed — call the two functions from wherever
 your framework lets you run code:
 
 ```svelte
-<button on:click={() => { session = primeKeyboard(); open = true; }}>Search</button>
-{#if open}<input use:action bind:this={el} />{/if}
+<script>
+  import { primeKeyboard } from "ios-keyboard-focus";
+
+  let open = false;
+  let session;
+
+  function openSearch() {
+    session = primeKeyboard();
+    open = true;
+  }
+
+  function handover(node) {
+    session?.handover(node);
+  }
+</script>
+
+<button on:click={openSearch}>Search</button>
+{#if open}<input use:handover />{/if}
 ```
 
 ## API
@@ -161,19 +177,23 @@ server-rendered code paths.
 
 ### `session.handover(element, options?): boolean`
 
-Moves focus to the real field. Returns `false` if the session is no longer
-active, in which case nothing is focused.
+Moves focus to the real field. Returns `true` only if the element actually
+received focus. Returns `false` if the session is no longer active or the
+element could not be focused.
 
 | Option | Default | Description |
 | --- | --- | --- |
-| `carryValue` | `true` | Copies anything typed into the decoy over to the field and dispatches an `input` event. |
+| `carryValue` | `true` | Copies text typed into the decoy when the real field is empty, and dispatches an `input` event. Existing values are never overwritten. |
 | `preventScroll` | `false` | Passed to `focus()`. |
 
 ### `session.handoverWhen(target, options?): Promise<boolean>`
 
-`target` is a CSS selector or a `() => HTMLElement | null` getter. Adds
-`timeout` (default `5000`ms) and `root` (default `document.body`) to the options
-above. Resolves `false` and dismisses the keyboard if the timeout elapses.
+`target` is a CSS selector or a `() => HTMLElement | null` getter. Selectors
+are checked after elements are inserted or their attributes change; getters
+are additionally checked once per animation frame, so they may depend on state
+outside the DOM. Adds `timeout` (default `5000`ms) and `root` (default
+`document.body`) to the options above. Resolves `false` and dismisses the
+keyboard if the timeout elapses.
 
 ### `session.cancel(): void`
 

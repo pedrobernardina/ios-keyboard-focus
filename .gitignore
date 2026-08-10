@@ -3,3 +3,12 @@ dist
 *.log
 .DS_Store
 demo-dist
+*.tgz
+
+# Local agent and AI tooling
+.agents/
+.codex/
+.claude/
+skills-lock.json
+AGENTS.md
+CLAUDE.md

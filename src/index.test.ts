@@ -101,6 +101,19 @@ describe("handover", () => {
     expect(session.active).toBe(false);
   });
 
+  it("recognizes focus inside a shadow root", () => {
+    const host = document.createElement("div");
+    const shadow = host.attachShadow({ mode: "open" });
+    const input = document.createElement("input");
+    shadow.appendChild(input);
+    document.body.appendChild(host);
+
+    const session = primeKeyboard();
+
+    expect(session.handover(input)).toBe(true);
+    expect(shadow.activeElement).toBe(input);
+  });
+
   it("focuses the real field before the decoy loses focus", () => {
     // The order is the whole trick. Blurring first would leave the page with
     // nothing focused, and iOS dismisses the keyboard on that transition —
@@ -175,6 +188,29 @@ describe("handover", () => {
     expect(document.activeElement).toBe(first);
   });
 
+  it("reports failure and keeps the session active when focus does not move", () => {
+    const target = document.createElement("div");
+    document.body.appendChild(target);
+    vi.spyOn(target, "focus").mockImplementation(() => {});
+
+    const session = primeKeyboard();
+
+    expect(session.handover(target)).toBe(false);
+    expect(session.active).toBe(true);
+    expect(document.activeElement).toBe(decoyEl());
+  });
+
+  it("ends the session if the decoy unexpectedly loses focus", () => {
+    const input = document.createElement("input");
+    document.body.appendChild(input);
+
+    const session = primeKeyboard();
+    input.focus();
+
+    expect(session.active).toBe(false);
+    expect(session.handover(input)).toBe(false);
+  });
+
   it("supersedes an older session so a stale handover cannot fire", () => {
     const stale = document.createElement("input");
     document.body.appendChild(stale);
@@ -220,6 +256,40 @@ describe("handoverWhen", () => {
     document.body.appendChild(input);
 
     await expect(handedOver).resolves.toBe(true);
+  });
+
+  it("rechecks a selector when an existing element gains a matching attribute", async () => {
+    const input = document.createElement("input");
+    document.body.appendChild(input);
+    const session = primeKeyboard();
+    const handedOver = session.handoverWhen("[data-ready]");
+
+    input.setAttribute("data-ready", "");
+
+    await expect(handedOver).resolves.toBe(true);
+    expect(document.activeElement).toBe(input);
+  });
+
+  it("polls a getter whose result changes without a DOM mutation", async () => {
+    const input = document.createElement("input");
+    document.body.appendChild(input);
+    let ready = false;
+    const session = primeKeyboard();
+    const handedOver = session.handoverWhen(() => ready ? input : null);
+
+    ready = true;
+
+    await expect(handedOver).resolves.toBe(true);
+    expect(document.activeElement).toBe(input);
+  });
+
+  it("settles a pending handover immediately when the session is cancelled", async () => {
+    const session = primeKeyboard();
+    const handedOver = session.handoverWhen("#never", { timeout: 60_000 });
+
+    session.cancel();
+
+    await expect(handedOver).resolves.toBe(false);
   });
 
   it("gives up and dismisses the keyboard when the field never arrives", async () => {
