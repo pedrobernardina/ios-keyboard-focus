@@ -1,5 +1,11 @@
 # ios-keyboard-focus
 
+[![npm](https://img.shields.io/npm/v/ios-keyboard-focus)](https://www.npmjs.com/package/ios-keyboard-focus)
+[![bundle size](https://img.shields.io/bundlejs/size/ios-keyboard-focus)](https://bundlejs.com/?q=ios-keyboard-focus)
+[![dependencies](https://img.shields.io/badge/dependencies-0-brightgreen)](./package.json)
+[![types](https://img.shields.io/badge/types-included-blue)](./package.json)
+[![license](https://img.shields.io/badge/license-MIT-blue)](./LICENSE)
+
 Open the iOS on-screen keyboard for an input that **does not exist yet**.
 
 ```bash
