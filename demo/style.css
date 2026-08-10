@@ -1,0 +1,145 @@
+:root {
+  --bg: #fff;
+  --fg: #16161a;
+  --muted: #6b6b76;
+  --line: #e4e4e9;
+  --accent: #1f6feb;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #131317;
+    --fg: #ececf1;
+    --muted: #9a9aa6;
+    --line: #2a2a33;
+    --accent: #5b9bff;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 1.5rem 1.25rem 4rem;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.55 system-ui, -apple-system, sans-serif;
+}
+
+h1 {
+  margin: 0 0 0.5rem;
+  font-size: 1.5rem;
+}
+
+h2 {
+  margin: 0 0 0.25rem;
+  font-size: 1.05rem;
+}
+
+p {
+  margin: 0 0 0.75rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85em;
+}
+
+.page-header {
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.toggle {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.toggle input {
+  width: 1.1rem;
+  height: 1.1rem;
+  accent-color: var(--accent);
+}
+
+.hint {
+  margin: 0.4rem 0 0;
+  font-size: 0.8rem;
+}
+
+section {
+  padding: 1.25rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+button {
+  padding: 0.7rem 1.1rem;
+  border: 1px solid var(--line);
+  border-radius: 0.6rem;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.close {
+  align-self: flex-end;
+  background: transparent;
+  color: var(--fg);
+}
+
+/* 16px minimum, or iOS zooms the viewport when the field takes focus. */
+.field {
+  width: 100%;
+  margin-top: 1rem;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 0.6rem;
+  background: var(--bg);
+  color: var(--fg);
+  font: inherit;
+  font-size: 16px;
+}
+
+.overlay {
+  display: flex;
+  position: fixed;
+  z-index: 10;
+  flex-direction: column;
+  padding: 1.25rem;
+  background: var(--bg);
+}
+
+.modal {
+  inset: 0;
+  animation: fade 0.2s ease-out;
+}
+
+.sheet {
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(85vw, 22rem);
+  border-left: 1px solid var(--line);
+  animation: slide 0.25s ease-out;
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes slide {
+  from {
+    transform: translateX(100%);
+  }
+}

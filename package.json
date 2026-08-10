@@ -1,0 +1,71 @@
+{
+  "name": "ios-keyboard-focus",
+  "version": "0.1.0",
+  "description": "Open the iOS on-screen keyboard for an input that does not exist yet, by focusing a decoy inside the tap and handing focus over when the real field mounts.",
+  "keywords": [
+    "ios",
+    "safari",
+    "webkit",
+    "keyboard",
+    "focus",
+    "autofocus",
+    "virtual-keyboard",
+    "user-activation",
+    "modal",
+    "search"
+  ],
+  "license": "MIT",
+  "author": "Pedro Bernardina",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pedrobernardina/ios-keyboard-focus.git"
+  },
+  "homepage": "https://github.com/pedrobernardina/ios-keyboard-focus#readme",
+  "bugs": {
+    "url": "https://github.com/pedrobernardina/ios-keyboard-focus/issues"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./react": {
+      "types": "./dist/react.d.ts",
+      "default": "./dist/react.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "peerDependencies": {
+    "react": ">=16.8"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "demo": "vite demo --host",
+    "check": "pnpm typecheck && pnpm test && pnpm build",
+    "prepublishOnly": "pnpm check"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "happy-dom": "^15.0.0",
+    "react": "^19.0.0",
+    "tsdown": "^0.9.0",
+    "typescript": "^5.6.0",
+    "vite": "^6.0.0",
+    "vitest": "^2.1.0"
+  },
+  "packageManager": "pnpm@10.27.0"
+}

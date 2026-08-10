@@ -1,0 +1,182 @@
+# ios-keyboard-focus
+
+Open the iOS on-screen keyboard for an input that **does not exist yet**.
+
+```bash
+npm i ios-keyboard-focus
+```
+
+~1kB gzipped, zero dependencies, no framework required.
+
+## The problem
+
+You have a search button. Tapping it opens a modal, the modal renders an input,
+the input gets `autoFocus`. On Android and desktop this works. On iOS the caret
+blinks in the field and **no keyboard appears**.
+
+iOS only opens the keyboard for a `focus()` that runs while the tap's
+[transient user activation](https://developer.mozilla.org/en-US/docs/Web/Security/User_activation)
+is still alive. By the time your modal has mounted its input, that window is
+long gone.
+
+Measured on a physical iPhone (iOS 18, Safari), which is the only way to test
+this — simulators do not reproduce it:
+
+| What was tried | Keyboard opens |
+| --- | :---: |
+| `focus()` synchronously in the tap handler | ✅ |
+| …on an input that is off-screen (`translateY(-100%)`) | ✅ |
+| …on an input with `opacity: 0` | ✅ |
+| …with the page scroll locked (`body { position: fixed }`) | ✅ |
+| `focus()` inside a single `requestAnimationFrame` | ❌ |
+| `focus()` after `setTimeout(…, 400)` | ❌ |
+
+The lesson: **position and visibility are irrelevant, timing is everything.**
+There is no grace period at all — one frame is already too late.
+
+## The trick
+
+Since iOS does not care *which* field you focus, focus a throwaway one inside
+the tap, and hand the keyboard over to the real field once it mounts. Moving
+focus between two text fields keeps the keyboard up; iOS only presents and
+dismisses it on the transitions into and out of text input.
+
+```js
+import { primeKeyboard } from "ios-keyboard-focus";
+
+searchButton.addEventListener("click", () => {
+  const session = primeKeyboard(); // first statement — keyboard opens now
+  openSearchModal();               // your UI, however you build it
+  session.handoverWhen("#search"); // takes over as soon as the field exists
+});
+```
+
+That is the whole library.
+
+## Usage
+
+### When you already have the element
+
+```js
+const session = primeKeyboard();
+const input = renderModal();
+session.handover(input);
+```
+
+### When the field mounts later
+
+`handoverWhen` accepts a selector or a getter, watches the DOM, and hands over
+the moment it appears. If it never does, it dismisses the keyboard rather than
+leaving the user typing into nothing.
+
+```js
+const session = primeKeyboard();
+openModal();
+
+await session.handoverWhen("#search", { timeout: 3000 });
+```
+
+### React / Preact
+
+```tsx
+import { useKeyboardFocus } from "ios-keyboard-focus/react";
+
+function Search() {
+  const [open, setOpen] = useState(false);
+  const { prime, register } = useKeyboardFocus();
+
+  return (
+    <>
+      <button onClick={() => { prime(); setOpen(true); }}>Search</button>
+      {open && <input ref={register} />}
+    </>
+  );
+}
+```
+
+`register` is a callback ref, so the handover happens exactly when React
+attaches the node. Works with Preact through `preact/compat`.
+
+### Vue, Svelte, anything else
+
+There is no adapter and none is needed — call the two functions from wherever
+your framework lets you run code:
+
+```svelte
+<button on:click={() => { session = primeKeyboard(); open = true; }}>Search</button>
+{#if open}<input use:action bind:this={el} />{/if}
+```
+
+## API
+
+### `primeKeyboard(): KeyboardSession`
+
+Creates (once) an invisible, focusable input and focuses it. **Call it
+synchronously inside a user gesture handler**, ideally as the first statement.
+Returns a dead no-op session when there is no DOM, so it is safe to call in
+server-rendered code paths.
+
+### `session.handover(element, options?): boolean`
+
+Moves focus to the real field. Returns `false` if the session is no longer
+active, in which case nothing is focused.
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `carryValue` | `true` | Copies anything typed into the decoy over to the field and dispatches an `input` event. |
+| `preventScroll` | `false` | Passed to `focus()`. |
+
+### `session.handoverWhen(target, options?): Promise<boolean>`
+
+`target` is a CSS selector or a `() => HTMLElement | null` getter. Adds
+`timeout` (default `5000`ms) and `root` (default `document.body`) to the options
+above. Resolves `false` and dismisses the keyboard if the timeout elapses.
+
+### `session.cancel(): void`
+
+Dismisses the keyboard. Call it if the user closes the UI before the field ever
+appeared.
+
+### `needsKeyboardPriming(): boolean`
+
+`true` on iOS and iPadOS. You do not need this — priming is harmless everywhere
+— but it is there if you want to skip the dance on desktop.
+
+### `destroyDecoy(): void`
+
+Removes the decoy node. Only useful in tests.
+
+## Gotchas
+
+- **Do not `await` anything before `primeKeyboard()`.** Not a promise, not a
+  `requestAnimationFrame`, not a `setTimeout(…, 0)`. This is the one rule.
+- **Do not unmount the decoy while it holds focus.** The library owns it and
+  keeps it alive; just do not go removing `[data-ios-keyboard-focus-decoy]`.
+- **Do not hide your real field with `display: none` or `visibility: hidden`**
+  before handing over — neither is focusable. Transparency and transforms are.
+- **Keep your real input at `font-size: 16px` or larger**, or iOS zooms the
+  viewport when it takes focus. The decoy already does this.
+- **Moving the input node in the DOM blurs it.** Reparenting a focused element
+  removes it from the document first, which drops focus and closes the keyboard.
+  Animate a container, never re-attach the field itself.
+
+## Demos
+
+```bash
+pnpm install
+pnpm demo   # then open the printed network URL on your phone
+```
+
+Four scenarios — modal, side sheet, deferred mount, inline expand — with a
+toggle to turn priming off so you can feel the bug it fixes. **Use a real
+device**; the simulator and desktop Safari will both lie to you.
+
+## Support
+
+None, honestly. This scratches an itch I hit in production and it is published
+because it might scratch yours. Issues and PRs may sit unread — fork it, vendor
+it, copy the 100 lines that matter. It is MIT, that is the point.
+
+## License
+
+MIT. If we ever meet and this saved your afternoon, the beer is on you.
