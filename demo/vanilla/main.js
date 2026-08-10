@@ -88,6 +88,9 @@ const demos = {
 
   inline(session) {
     const input = searchField();
+    // No Close button here, so dismissing the keyboard is what collapses it —
+    // the field goes away as soon as it stops being the focused element.
+    input.addEventListener("blur", () => input.remove());
     inlineSlot.append(input);
 
     session?.handover(input);

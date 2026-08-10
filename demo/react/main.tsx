@@ -149,7 +149,13 @@ function InlineDemo({ priming }: PrimingProps) {
         Search
       </button>
       {open && (
-        <SearchField ref={priming ? register : undefined} autoFocus={!priming} />
+        <SearchField
+          ref={priming ? register : undefined}
+          autoFocus={!priming}
+          // No Close button here, so dismissing the keyboard is what collapses
+          // it — the field goes away as soon as it stops being focused.
+          onBlur={() => setOpen(false)}
+        />
       )}
     </>
   );
