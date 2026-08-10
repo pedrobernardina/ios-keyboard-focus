@@ -9,10 +9,19 @@ const src = (file: string) => resolve(import.meta.dirname, "src", file);
 // GitHub serves it from.
 const base = process.env.DEMO_BASE ?? "/";
 
+// These demos are only meaningful on a real iPhone, which in practice means
+// reaching this dev server through an ngrok or cloudflared tunnel. Vite rejects
+// hostnames it does not know as protection against DNS rebinding, and there is
+// no CLI flag for it — it has to be set here. A throwaway demo server serving
+// four static pages has nothing worth rebinding to.
+const tunnelFriendly = { allowedHosts: true } as const;
+
 export default defineConfig({
   root: "demo",
   base,
   plugins: [react()],
+  server: tunnelFriendly,
+  preview: tunnelFriendly,
   resolve: {
     alias: [
       // Longest first: "ios-keyboard-focus" would otherwise swallow the

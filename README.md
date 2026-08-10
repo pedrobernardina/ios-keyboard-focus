@@ -246,14 +246,10 @@ cloudflared tunnel --url http://localhost:5173
 ngrok http 5173
 ```
 
-Vite blocks unknown hosts, so add the tunnel domain (or allow any) before
-loading it:
-
-```bash
-pnpm demo -- --allowed-hosts .trycloudflare.com
-# or, for any host:
-pnpm demo -- --allowed-hosts all
-```
+Either URL works as-is — `vite.config.ts` already sets `server.allowedHosts`,
+so the tunnel's hostname is not rejected. (Vite blocks unknown hosts by default
+as DNS-rebinding protection, and there is no CLI flag for it: `--allowedHosts`
+is silently ignored, which makes it look like the setting does not work.)
 
 Two things worth knowing while testing:
 
