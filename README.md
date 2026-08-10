@@ -264,6 +264,13 @@ cloudflared tunnel --url http://localhost:5173
 ngrok http 5173
 ```
 
+By default the demos run against `src/`, so editing the library reloads them.
+To exercise the artifact that actually gets published instead:
+
+```bash
+pnpm demo:dist
+```
+
 Either URL works as-is — `vite.config.ts` already sets `server.allowedHosts`,
 so the tunnel's hostname is not rejected. (Vite blocks unknown hosts by default
 as DNS-rebinding protection, and there is no CLI flag for it: `--allowedHosts`

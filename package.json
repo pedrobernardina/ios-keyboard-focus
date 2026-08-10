@@ -55,6 +55,7 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "demo": "vite --host",
+    "demo:dist": "pnpm build && DEMO_TARGET=dist vite --host",
     "demo:build": "vite build",
     "demo:preview": "vite preview --host",
     "check": "pnpm typecheck && pnpm test && pnpm build",

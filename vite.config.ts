@@ -2,7 +2,15 @@ import { resolve } from "node:path";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
-const src = (file: string) => resolve(import.meta.dirname, "src", file);
+// The demos normally run against src, so editing the library hot-reloads them.
+// DEMO_TARGET=dist points them at the built output instead — the exact artifact
+// that gets published, which is otherwise never exercised in a browser.
+const fromDist = process.env.DEMO_TARGET === "dist";
+const dir = fromDist ? "dist" : "src";
+const ext = fromDist ? "js" : "ts";
+
+const entry = (name: string) =>
+  resolve(import.meta.dirname, dir, `${name}.${ext}`);
 
 // Served from the root by default, which keeps the URL you type on the phone
 // short. The Pages workflow sets DEMO_BASE=/<repo>/, since that is where
@@ -27,8 +35,8 @@ export default defineConfig({
       // Longest first: "ios-keyboard-focus" would otherwise swallow the
       // "/react" subpath. The demos import the package by name so they read
       // exactly like the README, while running against the local source.
-      { find: "ios-keyboard-focus/react", replacement: src("react.ts") },
-      { find: "ios-keyboard-focus", replacement: src("index.ts") },
+      { find: "ios-keyboard-focus/react", replacement: entry("react") },
+      { find: "ios-keyboard-focus", replacement: entry("index") },
     ],
   },
   build: {
