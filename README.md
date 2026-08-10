@@ -6,7 +6,7 @@ Open the iOS on-screen keyboard for an input that **does not exist yet**.
 npm i ios-keyboard-focus
 ```
 
-~1kB gzipped, zero dependencies, no framework required.
+~1.5kB gzipped, zero dependencies, no framework required.
 
 ## The problem
 
@@ -322,7 +322,7 @@ There is no dedicated `gh pages` command; Pages is managed through `gh api`.
 
 None, honestly. This scratches an itch I hit in production and it is published
 because it might scratch yours. Issues and PRs may sit unread — fork it, vendor
-it, copy the 100 lines that matter. It is MIT, that is the point.
+it, copy the parts that matter. It is MIT, that is the point.
 
 ## License
 
