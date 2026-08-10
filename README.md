@@ -53,6 +53,49 @@ searchButton.addEventListener("click", () => {
 
 That is the whole library.
 
+## Why it works
+
+This is not a loophole. It is the same path every multi-field form on iOS
+already uses.
+
+The activation requirement applies to **presenting** the keyboard, not to
+moving focus once it is on screen. iOS decides whether the keyboard is up by
+asking a single question — *is something editable focused right now?* — so as
+long as the answer never becomes "no", the keyboard has no reason to leave.
+
+You have used this a hundred times without noticing:
+
+- The **Next / Previous** chevrons above the iOS keyboard walk you through the
+  fields of a form. Focus changes, the keyboard stays.
+- **One-time-code inputs** that auto-advance as you type call `focus()` on the
+  next box from a `input` handler — no gesture in sight — and the keyboard
+  never flickers.
+- **Formatted fields** that split a card number or a phone across several
+  inputs do the same thing.
+
+None of those have a user gesture at the moment they move focus, and all of
+them keep the keyboard. The decoy just puts your page in that same state
+*early*: by the time the real field mounts, you are no longer asking iOS to
+open a keyboard — you are asking it to move one that is already open, which it
+has always allowed.
+
+The transitions that do cost you the keyboard are the ones into and out of text
+input:
+
+| Transition | Keyboard |
+| --- | --- |
+| nothing → text field | needs a user gesture |
+| text field → text field | always allowed |
+| text field → nothing | dismissed, and you cannot undo it without a gesture |
+
+That last row is why the library never blurs the decoy before focusing the real
+field, and why `handoverWhen` gives up with `cancel()` instead of leaving a
+keyboard hovering over a field that never arrived.
+
+One honest caveat: none of this is specified anywhere. It is WebKit behaviour,
+observed and depended upon by a lot of production code — including every OTP
+input you have ever used — but Apple has never promised it in writing.
+
 ## Usage
 
 ### When you already have the element
