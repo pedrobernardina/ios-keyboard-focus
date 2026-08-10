@@ -49,6 +49,42 @@
       </section>
 
       <section>
+        <h2>Ready via class</h2>
+        <p>
+          The field is mounted from the start and only matches once a class
+          lands on it — an attribute change, not a new node.
+        </p>
+        <button type="button" data-demo="ready">Open, then become ready</button>
+      </section>
+
+      <section>
+        <h2>Enabled later</h2>
+        <p>
+          Starts <code>disabled</code>, the everyday shape of “still loading”.
+          A disabled field cannot take focus, so the selector excludes it.
+        </p>
+        <button type="button" data-demo="enabled">Open, then enable</button>
+      </section>
+
+      <section>
+        <h2>Ready via state</h2>
+        <p>
+          Nothing in the DOM changes at all — only a variable flips. No selector
+          could match that, so the target is a getter, polled per frame.
+        </p>
+        <button type="button" data-demo="state">Open, then flip state</button>
+      </section>
+
+      <section>
+        <h2>Never arrives</h2>
+        <p>
+          The failure mode on purpose: after the timeout the keyboard is
+          dismissed instead of hovering over a field that never came.
+        </p>
+        <button type="button" data-demo="never">Open and wait</button>
+      </section>
+
+      <section>
         <h2>Inline expand</h2>
         <p>No overlay at all — the field grows out of the button.</p>
         <button type="button" data-demo="inline">Search</button>

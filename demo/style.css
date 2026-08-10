@@ -181,3 +181,24 @@ button {
   background: transparent;
   color: var(--accent);
 }
+
+.status {
+  margin: 0.75rem 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.status.ok {
+  color: #157f3d;
+  font-weight: 600;
+}
+
+.status.failed {
+  color: #b3261e;
+  font-weight: 600;
+}
+
+.field:disabled {
+  background: var(--line);
+  color: var(--muted);
+}

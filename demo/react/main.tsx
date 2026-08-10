@@ -1,12 +1,14 @@
 import {
   type ComponentPropsWithRef,
   type ReactNode,
+  type RefObject,
   useCallback,
   useEffect,
   useRef,
   useState,
 } from "react";
 import { createRoot } from "react-dom/client";
+import type { KeyboardSession } from "ios-keyboard-focus";
 import { useKeyboardFocus } from "ios-keyboard-focus/react";
 
 type PrimingProps = {
@@ -133,6 +135,95 @@ function DeferredDemo({ priming }: PrimingProps) {
   );
 }
 
+/** Shows the outcome on screen — there is no console on a phone. */
+function Status({ waiting, outcome }: {
+  waiting: string;
+  outcome: boolean | null;
+}) {
+  const text = outcome === null
+    ? waiting
+    : outcome
+    ? "Handed over — the keyboard should still be up."
+    : "Gave up, keyboard dismissed.";
+
+  return (
+    <p className={`status ${outcome === null ? "" : outcome ? "ok" : "failed"}`}>
+      {text}
+    </p>
+  );
+}
+
+type WaitingDemoProps = PrimingProps & {
+  label: string;
+  waiting: string;
+  /** Renders the field, in whatever not-yet-ready shape the scenario needs. */
+  children: (
+    ready: boolean,
+    fieldRef: RefObject<HTMLInputElement | null>,
+  ) => ReactNode;
+  /** What the session should wait for, given the field's own ref. */
+  target: (
+    fieldRef: RefObject<HTMLInputElement | null>,
+    ready: RefObject<boolean>,
+  ) => Parameters<KeyboardSession["handoverWhen"]>[0];
+  timeout?: number;
+};
+
+/**
+ * The shared shape of every "the field is not ready yet" scenario: prime on
+ * tap, open, and let handoverWhen decide when the keyboard changes hands.
+ */
+function WaitingDemo(
+  { priming, label, waiting, children, target, timeout }: WaitingDemoProps,
+) {
+  const [open, setOpen] = useState(false);
+  const [ready, setReady] = useState(false);
+  const [outcome, setOutcome] = useState<boolean | null>(null);
+  const { prime, cancel } = useKeyboardFocus();
+  const fieldRef = useRef<HTMLInputElement>(null);
+  const readyRef = useRef(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  useEffect(() => () => clearTimeout(timer.current), []);
+
+  function close() {
+    clearTimeout(timer.current);
+    cancel();
+    setOpen(false);
+    setReady(false);
+    readyRef.current = false;
+    setOutcome(null);
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => {
+          const session = priming ? prime() : null;
+          setOpen(true);
+
+          session?.handoverWhen(target(fieldRef, readyRef), { timeout })
+            .then(setOutcome);
+
+          timer.current = setTimeout(() => {
+            readyRef.current = true;
+            setReady(true);
+          }, 800);
+        }}
+      >
+        {label}
+      </button>
+      {open && (
+        <Overlay className="modal" onClose={close}>
+          {children(ready, fieldRef)}
+          <Status waiting={waiting} outcome={outcome} />
+        </Overlay>
+      )}
+    </>
+  );
+}
+
 function InlineDemo({ priming }: PrimingProps) {
   const [open, setOpen] = useState(false);
   const { prime, register } = useKeyboardFocus();
@@ -219,6 +310,78 @@ function App() {
             whenever that happens.
           </p>
           <DeferredDemo priming={priming} />
+        </section>
+
+        <section>
+          <h2>Ready via class</h2>
+          <p>
+            Mounted from the start, matching the selector only once a class
+            lands on it — an attribute change, not a new node.
+          </p>
+          <WaitingDemo
+            priming={priming}
+            label="Open, then become ready"
+            waiting="Field is mounted but not ready…"
+            target={() => "#ready-field.ready"}
+          >
+            {(ready) => (
+              <SearchField
+                id="ready-field"
+                className={`field ${ready ? "ready" : "loading"}`}
+              />
+            )}
+          </WaitingDemo>
+        </section>
+
+        <section>
+          <h2>Enabled later</h2>
+          <p>
+            Starts <code>disabled</code>, the everyday shape of “still
+            loading”. A disabled field cannot take focus, so the selector
+            excludes it.
+          </p>
+          <WaitingDemo
+            priming={priming}
+            label="Open, then enable"
+            waiting="Field is disabled…"
+            target={() => "#enabled-field:not([disabled])"}
+          >
+            {(ready) => <SearchField id="enabled-field" disabled={!ready} />}
+          </WaitingDemo>
+        </section>
+
+        <section>
+          <h2>Ready via state</h2>
+          <p>
+            Nothing in the DOM changes — only a ref flips. No selector could
+            match that, so the target is a getter, polled once per frame.
+          </p>
+          <WaitingDemo
+            priming={priming}
+            label="Open, then flip state"
+            waiting="Waiting on application state…"
+            target={(fieldRef, ready) => () =>
+              ready.current ? fieldRef.current : null}
+          >
+            {(_, fieldRef) => <SearchField ref={fieldRef} />}
+          </WaitingDemo>
+        </section>
+
+        <section>
+          <h2>Never arrives</h2>
+          <p>
+            The failure mode on purpose: after the timeout the keyboard is
+            dismissed instead of hovering over a field that never came.
+          </p>
+          <WaitingDemo
+            priming={priming}
+            label="Open and wait"
+            waiting="Waiting for a field that never mounts…"
+            target={() => "#nope"}
+            timeout={2000}
+          >
+            {() => null}
+          </WaitingDemo>
         </section>
 
         <section>
