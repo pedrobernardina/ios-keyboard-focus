@@ -146,6 +146,11 @@ function Search() {
 `register` is a callback ref, so the handover happens exactly when React
 attaches the node. Works with Preact through `preact/compat`.
 
+This entry point began as a proof that the handover survives a framework
+deciding when things mount, and it is tested and used on a device — but the
+core is the part I consider finished. If the hook gets in your way, the two
+functions underneath work perfectly well on their own.
+
 ### Vue, Svelte, anything else
 
 There is no adapter and none is needed — call the two functions from wherever
@@ -326,9 +331,17 @@ There is no dedicated `gh pages` command; Pages is managed through `gh api`.
 
 ## Support
 
-None, honestly. This scratches an itch I hit in production and it is published
-because it might scratch yours. Issues and PRs may sit unread — fork it, vendor
-it, copy the parts that matter. It is MIT, that is the point.
+This scratches an itch I hit in production, and it is published because it
+might scratch yours.
+
+For the first few weeks I will be watching the repo, so open an issue or a PR
+if you want to collaborate — that is genuinely welcome while the API is still
+settling. After that, expect no active support. The library is small enough
+that maintaining it should not be a job, and honestly I do not expect this to
+scale to where it would become one.
+
+So if it breaks for you and I am not around: fork it, vendor it, copy the parts
+that matter. It is MIT, that is the point.
 
 ## License
 
