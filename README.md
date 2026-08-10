@@ -162,14 +162,77 @@ Removes the decoy node. Only useful in tests.
 
 ## Demos
 
+Two builds of the same four scenarios — modal, side sheet, deferred mount,
+inline expand — each with a toggle to turn priming off so you can feel the bug
+it fixes:
+
+- **[Vanilla](https://pedrobernardina.github.io/ios-keyboard-focus/vanilla/)** — plain DOM
+- **[React](https://pedrobernardina.github.io/ios-keyboard-focus/react/)** — the `useKeyboardFocus` hook
+
+**Use a real device.** The iOS Simulator and desktop Safari with a touch
+emulator both fail to reproduce the problem, so they will happily tell you
+everything works.
+
+### Running them locally
+
 ```bash
 pnpm install
-pnpm demo   # then open the printed network URL on your phone
+pnpm demo
 ```
 
-Four scenarios — modal, side sheet, deferred mount, inline expand — with a
-toggle to turn priming off so you can feel the bug it fixes. **Use a real
-device**; the simulator and desktop Safari will both lie to you.
+Vite prints two URLs. The **Network** one is the one that matters:
+
+```
+➜  Local:   http://localhost:5173/
+➜  Network: http://192.168.68.53:5173/   ← open this on the phone
+```
+
+If the phone is on the same Wi-Fi, that is all you need.
+
+### When same-network does not work
+
+Corporate Wi-Fi with client isolation, a VPN, or testing from mobile data all
+break the local URL. Tunnel it instead — either of these gives you a public
+HTTPS address:
+
+```bash
+# cloudflared: no account needed for a quick tunnel
+cloudflared tunnel --url http://localhost:5173
+
+# ngrok: needs a free account for the auth token
+ngrok http 5173
+```
+
+Vite blocks unknown hosts, so add the tunnel domain (or allow any) before
+loading it:
+
+```bash
+pnpm demo -- --allowed-hosts .trycloudflare.com
+# or, for any host:
+pnpm demo -- --allowed-hosts all
+```
+
+Two things worth knowing while testing:
+
+- **The tunnel gives you HTTPS**, which the local IP does not. Irrelevant for
+  the keyboard itself, but it matters if your real app needs a secure context.
+- **To see the console**, connect the iPhone by cable and use Safari on a Mac
+  under *Develop → your iPhone*. Enable *Settings → Apps → Safari → Advanced →
+  Web Inspector* on the phone first. Without a Mac, log to an element on the
+  page — the demos are built so you should not need to.
+
+### Publishing the demos
+
+`.github/workflows/pages.yml` builds and deploys them to GitHub Pages on every
+push to `main`. Enable Pages in *Settings → Pages → Source: GitHub Actions*, or
+from the CLI:
+
+```bash
+gh api --method POST /repos/OWNER/REPO/pages -f build_type=workflow
+gh run watch
+```
+
+There is no dedicated `gh pages` command; Pages is managed through `gh api`.
 
 ## Support
 

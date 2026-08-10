@@ -12,7 +12,12 @@
     "declaration": true,
     "skipLibCheck": true,
     "noEmit": true,
-    "types": ["vitest/globals"]
+    "types": ["vitest/globals"],
+    "baseUrl": ".",
+    "paths": {
+      "ios-keyboard-focus": ["./src/index.ts"],
+      "ios-keyboard-focus/react": ["./src/react.ts"]
+    }
   },
   "include": ["src", "demo"]
 }

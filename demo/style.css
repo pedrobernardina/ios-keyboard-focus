@@ -143,3 +143,41 @@ button {
     transform: translateX(100%);
   }
 }
+
+.badge {
+  padding: 0.15em 0.5em;
+  border-radius: 0.4rem;
+  background: var(--line);
+  color: var(--muted);
+  vertical-align: middle;
+  font-weight: 600;
+  font-size: 0.6em;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.switch {
+  margin-top: 0.9rem;
+  font-size: 0.85rem;
+}
+
+.switch a,
+.cta {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.cta {
+  display: inline-block;
+  padding: 0.7rem 1.1rem;
+  border: 1px solid var(--accent);
+  border-radius: 0.6rem;
+  background: var(--accent);
+  color: #fff;
+}
+
+.cta.secondary {
+  background: transparent;
+  color: var(--accent);
+}

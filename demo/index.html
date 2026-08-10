@@ -10,51 +10,36 @@
     <header class="page-header">
       <h1>ios-keyboard-focus</h1>
       <p>
-        Open this on a real iPhone. A simulator will not reproduce the
-        behaviour, and neither will desktop Safari with a touch emulator.
+        Opening the iOS on-screen keyboard for an input that does not exist yet.
+        Each demo runs the same four scenarios, with a toggle to turn priming
+        off so you can feel the bug it fixes.
       </p>
-      <label class="toggle">
-        <input type="checkbox" id="priming" checked />
-        <span>Priming enabled</span>
-      </label>
       <p class="hint">
-        Turn it off to feel the bug: the field takes focus, the caret blinks,
-        and no keyboard appears.
+        These only mean anything on a real iPhone. Simulators and desktop
+        Safari with a touch emulator both fail to reproduce the problem.
       </p>
     </header>
 
     <main>
       <section>
-        <h2>Modal</h2>
-        <p>The classic case: a search overlay whose input mounts on open.</p>
-        <button type="button" data-demo="modal">Open search modal</button>
+        <h2>Vanilla</h2>
+        <p>Plain DOM, no framework. <code>primeKeyboard()</code> and <code>handover()</code>.</p>
+        <a class="cta" href="./vanilla/">Open vanilla demo</a>
       </section>
 
       <section>
-        <h2>Side sheet</h2>
-        <p>Slides in from the edge. The input exists only while open.</p>
-        <button type="button" data-demo="sheet">Open side sheet</button>
+        <h2>React</h2>
+        <p>The <code>useKeyboardFocus()</code> hook and its callback ref.</p>
+        <a class="cta" href="./react/">Open React demo</a>
       </section>
 
       <section>
-        <h2>Deferred mount</h2>
-        <p>
-          The input arrives 800ms late, as if fetched. Handled by
-          <code>handoverWhen</code>, which waits for it.
-        </p>
-        <button type="button" data-demo="deferred">Open slow modal</button>
-      </section>
-
-      <section>
-        <h2>Inline expand</h2>
-        <p>No overlay at all — the field grows out of the button.</p>
-        <button type="button" data-demo="inline">Search</button>
-        <div id="inline-slot"></div>
+        <h2>Source</h2>
+        <p>Roughly 150 lines, zero dependencies.</p>
+        <a class="cta secondary" href="https://github.com/pedrobernardina/ios-keyboard-focus">
+          GitHub
+        </a>
       </section>
     </main>
-
-    <div id="root"></div>
-
-    <script type="module" src="./main.js"></script>
   </body>
 </html>

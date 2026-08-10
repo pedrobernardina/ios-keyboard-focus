@@ -1,4 +1,4 @@
-import { primeKeyboard } from "../src/index.ts";
+import { primeKeyboard } from "ios-keyboard-focus";
 
 const root = document.getElementById("root");
 const primingToggle = document.getElementById("priming");

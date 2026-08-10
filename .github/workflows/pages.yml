@@ -1,0 +1,53 @@
+name: Deploy demos to Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Allow one deploy at a time, and let a newer push cancel a running one.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # The demos are the documentation, so a broken library must not ship one.
+      - run: pnpm check
+
+      - run: pnpm demo:build
+        env:
+          # Pages serves the site from /<repo>/.
+          DEMO_BASE: /${{ github.event.repository.name }}/
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: demo-dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
