@@ -189,6 +189,24 @@ appeared.
 
 Removes the decoy node. Only useful in tests.
 
+## What it puts in your page
+
+One `<input>`, appended to `<body>` the first time you call `primeKeyboard()`
+and reused from then on. It is deliberately inert:
+
+- No `name`, no `id`, and never inside a `<form>` — nothing submits it.
+- `type="text"` with `autocomplete="off"`, so password managers have nothing to
+  latch onto.
+- `aria-hidden="true"` and `tabindex="-1"` — invisible to screen readers and
+  unreachable by tabbing.
+- Hiding styles are set `!important`, so a global `input { … }` rule in your
+  stylesheet cannot reveal a stray field in the corner of the screen.
+- Anything typed into it is cleared on handover, on `cancel()`, and on blur, so
+  text does not linger in the DOM after the session ends.
+
+The published package is `dist/` only — no server, no build config, no
+dependencies. It touches the DOM exclusively when you call it.
+
 ## Gotchas
 
 - **Do not `await` anything before `primeKeyboard()`.** Not a promise, not a

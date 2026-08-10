@@ -58,6 +58,35 @@ describe("primeKeyboard", () => {
 
     expect(decoyEl()!.style.fontSize).toBe("16px");
   });
+
+  it("marks the hiding styles important, so host CSS cannot reveal it", () => {
+    primeKeyboard();
+    const { style } = decoyEl()!;
+
+    for (const property of ["opacity", "width", "height", "position"]) {
+      expect(style.getPropertyPriority(property)).toBe("important");
+    }
+  });
+
+  it("does not leave typed text in the DOM after losing focus", () => {
+    primeKeyboard();
+    const decoy = decoyEl()!;
+    decoy.value = "secret";
+
+    decoy.dispatchEvent(new FocusEvent("blur"));
+
+    expect(decoy.value).toBe("");
+  });
+
+  it("has nothing a form or a password manager would pick up", () => {
+    primeKeyboard();
+    const decoy = decoyEl()!;
+
+    expect(decoy.name).toBe("");
+    expect(decoy.type).toBe("text");
+    expect(decoy.getAttribute("autocomplete")).toBe("off");
+    expect(decoy.closest("form")).toBeNull();
+  });
 });
 
 describe("handover", () => {

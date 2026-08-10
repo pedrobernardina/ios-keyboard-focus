@@ -16,24 +16,24 @@ let decoy: HTMLInputElement | null = null;
  * focusable, so iOS has nothing to open the keyboard for. Transparency and a
  * 1px box out of the flow are, and iOS treats them as a normal focus target.
  */
-const HIDDEN_STYLE: Partial<CSSStyleDeclaration> = {
-  position: "fixed",
-  top: "0",
-  left: "0",
-  width: "1px",
-  height: "1px",
-  padding: "0",
-  border: "0",
-  outline: "none",
-  opacity: "0",
-  pointerEvents: "none",
+const HIDDEN_STYLE: Array<[string, string]> = [
+  ["position", "fixed"],
+  ["top", "0"],
+  ["left", "0"],
+  ["width", "1px"],
+  ["height", "1px"],
+  ["padding", "0"],
+  ["border", "0"],
+  ["outline", "none"],
+  ["opacity", "0"],
+  ["pointer-events", "none"],
   // Below 16px, iOS zooms the viewport when an input takes focus. The field is
   // invisible, but the zoom would not be.
-  fontSize: "16px",
-  // Keep it off the top-left corner visually without leaving the viewport,
-  // which some engines treat as a reason to scroll.
-  zIndex: "-1",
-};
+  ["font-size", "16px"],
+  // Stay inside the viewport — some engines scroll to a focused element that
+  // sits outside it — while behind everything else.
+  ["z-index", "-1"],
+];
 
 export function getDecoy(): HTMLInputElement | null {
   if (typeof document === "undefined") return null;
@@ -51,7 +51,19 @@ export function getDecoy(): HTMLInputElement | null {
   decoy.setAttribute("spellcheck", "false");
   decoy.setAttribute("data-ios-keyboard-focus-decoy", "");
 
-  Object.assign(decoy.style, HIDDEN_STYLE);
+  // !important because this node lands in someone else's page: a global
+  // `input { opacity: 1 }` in their stylesheet would otherwise reveal a stray
+  // text field in the corner of every screen.
+  for (const [property, value] of HIDDEN_STYLE) {
+    decoy.style.setProperty(property, value, "important");
+  }
+
+  // Anything typed before the handover lives here. Once the field loses focus
+  // the session is over one way or another, so there is no reason to keep the
+  // text sitting in the DOM.
+  decoy.addEventListener("blur", () => {
+    decoy!.value = "";
+  });
 
   document.body.appendChild(decoy);
 
