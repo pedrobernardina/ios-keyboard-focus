@@ -1,6 +1,7 @@
 # ios-keyboard-focus
 
 [![npm](https://img.shields.io/npm/v/ios-keyboard-focus)](https://www.npmjs.com/package/ios-keyboard-focus)
+[![tag](https://img.shields.io/github/v/tag/pedrobernardina/ios-keyboard-focus?label=tag)](https://github.com/pedrobernardina/ios-keyboard-focus/tags)
 [![bundle size](https://img.shields.io/bundlejs/size/ios-keyboard-focus)](https://bundlejs.com/?q=ios-keyboard-focus)
 [![dependencies](https://img.shields.io/badge/dependencies-0-brightgreen)](./package.json)
 [![types](https://img.shields.io/badge/types-included-blue)](./package.json)
