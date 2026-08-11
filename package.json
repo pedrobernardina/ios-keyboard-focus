@@ -1,6 +1,6 @@
 {
   "name": "ios-keyboard-focus",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Open the iOS on-screen keyboard for an input that does not exist yet, by focusing a decoy inside the tap and handing focus over when the real field mounts.",
   "keywords": [
     "ios",
