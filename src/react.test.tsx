@@ -77,3 +77,85 @@ describe("useKeyboardFocus", () => {
     );
   });
 });
+
+describe("register", () => {
+  /**
+   * The regression the existing tests missed by calling session.handover()
+   * directly: the failure path only exists when the ref callback is the one
+   * doing the handover.
+   */
+  it("keeps the session reachable when the handover fails", () => {
+    let keyboard: UseKeyboardFocus | null = null;
+
+    function App() {
+      const [open, setOpen] = useState(false);
+      keyboard = useKeyboardFocus();
+
+      return (
+        <>
+          <button type="button" onClick={() => setOpen(true)} />
+          {open && (
+            <input
+              ref={(node) => {
+                // A field that refuses focus: the handover cannot succeed, so
+                // the session stays alive holding the keyboard.
+                if (node) vi.spyOn(node, "focus").mockImplementation(() => {});
+                keyboard!.register(node);
+              }}
+            />
+          )}
+        </>
+      );
+    }
+
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    root = createRoot(host);
+    act(() => root!.render(<App />));
+
+    let session!: ReturnType<UseKeyboardFocus["prime"]>;
+    act(() => {
+      session = keyboard!.prime();
+      host.querySelector("button")!.click();
+    });
+
+    expect(session.active).toBe(true);
+    expect(document.activeElement).toBe(document.querySelector(DECOY_SELECTOR));
+
+    act(() => keyboard!.cancel());
+
+    expect(session.active).toBe(false);
+  });
+
+  it("still cancels a failed handover when the hook unmounts", () => {
+    let keyboard: UseKeyboardFocus | null = null;
+
+    function App() {
+      keyboard = useKeyboardFocus();
+      return (
+        <input
+          ref={(node) => {
+            if (node) vi.spyOn(node, "focus").mockImplementation(() => {});
+            keyboard!.register(node);
+          }}
+        />
+      );
+    }
+
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    root = createRoot(host);
+    act(() => root!.render(<App />));
+
+    let session!: ReturnType<UseKeyboardFocus["prime"]>;
+    act(() => {
+      session = keyboard!.prime();
+      root!.render(<App />);
+    });
+
+    act(() => root!.unmount());
+    root = null;
+
+    expect(session.active).toBe(false);
+  });
+});

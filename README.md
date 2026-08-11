@@ -13,7 +13,7 @@ Open the iOS on-screen keyboard for an input that **does not exist yet**.
 npm i ios-keyboard-focus
 ```
 
-~1.5kB gzipped, zero dependencies, no framework required.
+Less than 2kB gzipped, zero dependencies, no framework required.
 
 ## The problem
 
@@ -145,7 +145,12 @@ function Search() {
 ```
 
 `register` is a callback ref, so the handover happens exactly when React
-attaches the node. Works with Preact through `preact/compat`.
+attaches the node. Requires React 18 or newer, and works with Preact through
+`preact/compat`.
+
+The core has no opinion about any of this — `primeKeyboard` and `handover` are
+plain DOM, so React is only ever a peer dependency of this one entry point, and
+an optional one.
 
 This entry point began as a proof that the handover survives a framework
 deciding when things mount, and it is tested and used on a device — but the
@@ -190,8 +195,17 @@ server-rendered code paths.
 ### `session.handover(element, options?): boolean`
 
 Moves focus to the real field. Returns `true` only if the element actually
-received focus. Returns `false` if the session is no longer active or the
-element could not be focused.
+received focus. Returns `false`, without touching focus, if the session is no
+longer active or if the target is not a field that can hold a keyboard — a
+button, a `type="file"` input, a readonly field. Focusing one of those would
+dismiss the keyboard irreversibly, so it is refused rather than reported as a
+handover that worked.
+
+Accepted targets are `<textarea>`, `contenteditable` elements, and `<input>`
+of type `text`, `search`, `email`, `url`, `tel`, `password` or `number`.
+
+A `false` leaves the session alive, so you can call `handover` again with the
+right element.
 
 | Option | Default | Description |
 | --- | --- | --- |
@@ -206,6 +220,10 @@ are additionally checked once per animation frame, so they may depend on state
 outside the DOM. Adds `timeout` (default `5000`ms) and `root` (default
 `document.body`) to the options above. Resolves `false` and dismisses the
 keyboard if the timeout elapses.
+
+It never throws. A malformed selector or a getter that raises resolves `false`
+and dismisses the keyboard immediately, rather than waiting out a timeout for
+something that can never resolve.
 
 ### `session.cancel(): void`
 

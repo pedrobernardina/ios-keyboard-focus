@@ -50,8 +50,18 @@ export function useKeyboardFocus(
   const register = useCallback((node: HTMLElement | null) => {
     if (!node) return;
 
-    sessionRef.current?.handover(node, optionsRef.current);
-    sessionRef.current = null;
+    const session = sessionRef.current;
+    if (!session) return;
+
+    // Only let go of the session once it is over. A handover can fail — the
+    // node may refuse focus, or not be a field that sustains a keyboard — and
+    // the session then stays alive holding an open keyboard. Dropping the
+    // reference there would leave nothing able to close it: neither cancel()
+    // nor the unmount cleanup below, which is how a modal that closes early
+    // used to strand the keyboard over a screen that no longer exists.
+    if (session.handover(node, optionsRef.current) || !session.active) {
+      sessionRef.current = null;
+    }
   }, []);
 
   const cancel = useCallback(() => {

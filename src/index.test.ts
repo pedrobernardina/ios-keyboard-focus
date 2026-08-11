@@ -223,6 +223,117 @@ describe("handover", () => {
   });
 });
 
+describe("handover never throws", () => {
+  it("reports failure when focus() throws instead of propagating it", () => {
+    const input = document.createElement("input");
+    document.body.appendChild(input);
+    vi.spyOn(input, "focus").mockImplementation(() => {
+      throw new Error("focus blew up");
+    });
+
+    const session = primeKeyboard();
+
+    expect(() => session.handover(input)).not.toThrow();
+    expect(session.handover(input)).toBe(false);
+    // The keyboard never moved, so the session is still usable for a retry.
+    expect(session.active).toBe(true);
+    expect(document.activeElement).toBe(decoyEl());
+  });
+
+  it("survives an application input listener that throws", () => {
+    // Entirely plausible: carryValue dispatches `input` into application code,
+    // and a handler of theirs throwing used to abandon the session with focus
+    // already moved and nothing able to close the keyboard.
+    const input = document.createElement("input");
+    document.body.appendChild(input);
+    input.addEventListener("input", () => {
+      throw new Error("handler blew up");
+    });
+
+    const session = primeKeyboard();
+    decoyEl()!.value = "typed";
+
+    expect(() => session.handover(input)).not.toThrow();
+    expect(document.activeElement).toBe(input);
+    expect(session.active).toBe(false);
+  });
+});
+
+describe("targets that cannot hold the keyboard", () => {
+  const cases: Array<[string, () => HTMLElement]> = [
+    ["a button", () => document.createElement("button")],
+    ["a div", () => document.createElement("div")],
+    ["an element with contenteditable=false", () => {
+      const div = document.createElement("div");
+      div.setAttribute("contenteditable", "false");
+      return div;
+    }],
+    ["a file input", () => {
+      const input = document.createElement("input");
+      input.type = "file";
+      return input;
+    }],
+    ["a checkbox", () => {
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      return input;
+    }],
+    ["a readonly field", () => {
+      const input = document.createElement("input");
+      input.readOnly = true;
+      return input;
+    }],
+    ["a disabled field", () => {
+      const input = document.createElement("input");
+      input.disabled = true;
+      return input;
+    }],
+  ];
+
+  for (const [name, create] of cases) {
+    it(`refuses ${name} without touching focus`, () => {
+      const target = create();
+      document.body.appendChild(target);
+
+      const session = primeKeyboard();
+
+      // Reported as a failure rather than as a handover that dismissed the
+      // keyboard, and the session survives for a retry with a real field.
+      expect(session.handover(target)).toBe(false);
+      expect(session.active).toBe(true);
+      expect(document.activeElement).toBe(decoyEl());
+    });
+  }
+
+  const accepted: Array<[string, () => HTMLElement]> = [
+    ["a textarea", () => document.createElement("textarea")],
+    ["an email input", () => {
+      const input = document.createElement("input");
+      input.type = "email";
+      return input;
+    }],
+    ["a contenteditable element", () => {
+      const div = document.createElement("div");
+      // setAttribute rather than the property: happy-dom does not implement
+      // the contentEditable setter, and this is what the library reads anyway.
+      div.setAttribute("contenteditable", "true");
+      return div;
+    }],
+  ];
+
+  for (const [name, create] of accepted) {
+    it(`accepts ${name}`, () => {
+      const target = create();
+      document.body.appendChild(target);
+
+      const session = primeKeyboard();
+
+      expect(session.handover(target)).toBe(true);
+      expect(document.activeElement).toBe(target);
+    });
+  }
+});
+
 describe("handoverWhen", () => {
   it("hands over immediately when the field is already there", async () => {
     const input = document.createElement("input");
@@ -298,6 +409,51 @@ describe("handoverWhen", () => {
 
     const handedOver = session.handoverWhen("#never", { timeout: 1000 });
     await vi.advanceTimersByTimeAsync(1000);
+
+    await expect(handedOver).resolves.toBe(false);
+    expect(session.active).toBe(false);
+    vi.useRealTimers();
+  });
+});
+
+describe("handoverWhen never throws", () => {
+  it("gives up on a malformed selector instead of throwing at the call site", () => {
+    const session = primeKeyboard();
+
+    // It used to throw synchronously, from a method that returns a promise —
+    // so not even a .catch() could have caught it.
+    expect(() => session.handoverWhen("[")).not.toThrow();
+  });
+
+  it("dismisses the keyboard when the selector can never match", async () => {
+    const session = primeKeyboard();
+
+    await expect(session.handoverWhen("[")).resolves.toBe(false);
+    expect(session.active).toBe(false);
+  });
+
+  it("gives up when the getter throws", async () => {
+    const session = primeKeyboard();
+
+    await expect(session.handoverWhen(() => {
+      throw new Error("state blew up");
+    })).resolves.toBe(false);
+    expect(session.active).toBe(false);
+  });
+
+  it("gives up when a getter starts throwing only later", async () => {
+    vi.useFakeTimers();
+    let calls = 0;
+    const session = primeKeyboard();
+
+    const handedOver = session.handoverWhen(() => {
+      if (calls++ > 0) throw new Error("state blew up");
+      return null;
+    }, { timeout: 5000 });
+
+    // The first resolution returns null, so the wait starts; the throw only
+    // happens on a later poll, inside the promise.
+    await vi.advanceTimersByTimeAsync(100);
 
     await expect(handedOver).resolves.toBe(false);
     expect(session.active).toBe(false);

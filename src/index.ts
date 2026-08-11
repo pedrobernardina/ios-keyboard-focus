@@ -57,12 +57,74 @@ const DEAD_SESSION: KeyboardSession = {
   cancel: () => {},
 };
 
+/**
+ * Sentinel for a target that cannot be resolved at all — an invalid selector,
+ * or a getter that throws. Distinct from `null`, which only means "not there
+ * yet" and is worth waiting on.
+ */
+const UNRESOLVABLE = Symbol("unresolvable target");
+
 function resolveTarget(
   target: string | (() => HTMLElement | null | undefined),
   root: ParentNode,
-): HTMLElement | null {
-  if (typeof target === "function") return target() ?? null;
-  return root.querySelector<HTMLElement>(target);
+): HTMLElement | null | typeof UNRESOLVABLE {
+  try {
+    if (typeof target === "function") return target() ?? null;
+    return root.querySelector<HTMLElement>(target);
+  } catch {
+    // querySelector throws on a malformed selector, and a getter can throw for
+    // any reason of its own. Either way the target will never resolve, so
+    // waiting for it would strand the keyboard until the timeout.
+    return UNRESOLVABLE;
+  }
+}
+
+/**
+ * Input types that bring up a text keyboard. Others either open a picker
+ * (`date`, `color`), open a file dialog (`file`), or are not editable at all
+ * (`checkbox`, `button`) — focusing any of them dismisses the keyboard instead
+ * of inheriting it. Unknown `type` values report as `text`, so they land here.
+ */
+const KEYBOARD_INPUT_TYPES = new Set([
+  "text",
+  "search",
+  "email",
+  "url",
+  "tel",
+  "password",
+  "number",
+]);
+
+/**
+ * Whether focusing this element would keep the keyboard on screen.
+ *
+ * The handover only works between two fields that take text. Anything else is
+ * a "text field → nothing" transition as far as iOS is concerned, and that
+ * dismisses the keyboard for good — no gesture is left to reopen it.
+ */
+function canHoldKeyboard(target: HTMLElement): boolean {
+  // isContentEditable is authoritative — it accounts for editability inherited
+  // from an ancestor — but not every DOM implementation provides it, so the
+  // attribute is checked as a fallback. An empty value means true; only
+  // "false" turns it off.
+  if (target.isContentEditable) return true;
+  const editable = target.getAttribute("contenteditable");
+  if (editable === "" || editable === "true" || editable === "plaintext-only") {
+    return true;
+  }
+
+  // Tag names rather than instanceof: a target can come from an iframe, and so
+  // belong to a different JavaScript realm.
+  const tag = target.tagName;
+  if (tag !== "INPUT" && tag !== "TEXTAREA") return false;
+
+  const field = target as HTMLInputElement | HTMLTextAreaElement;
+  // A readonly field takes focus without opening a keyboard, and a disabled
+  // one takes no focus at all.
+  if (field.readOnly || field.disabled) return false;
+
+  return tag === "TEXTAREA" ||
+    KEYBOARD_INPUT_TYPES.has((field as HTMLInputElement).type);
 }
 
 function hasFocus(element: HTMLElement): boolean {
@@ -159,6 +221,13 @@ export function primeKeyboard(): KeyboardSession {
     handover(target, options = {}) {
       if (!active || !target) return false;
 
+      // Refuse before touching focus. Moving it to something that cannot hold
+      // a keyboard would dismiss it irreversibly, and reporting that as a
+      // successful handover would be a lie — the field is focused, the
+      // keyboard is gone. Leaving the decoy focused keeps the session usable
+      // for a retry with the right target.
+      if (!canHoldKeyboard(target)) return false;
+
       const { carryValue = true, preventScroll } = options;
       const typed = decoy.value;
 
@@ -167,6 +236,11 @@ export function primeKeyboard(): KeyboardSession {
       handingOver = true;
       try {
         target.focus({ preventScroll });
+      } catch {
+        // A target whose focus() throws never took the keyboard. Reporting it
+        // as a failure keeps this method's contract — it answers with a
+        // boolean, it does not throw — and leaves the decoy holding focus.
+        return false;
       } finally {
         handingOver = false;
       }
@@ -178,7 +252,17 @@ export function primeKeyboard(): KeyboardSession {
         return false;
       }
 
-      if (carryValue) carryValueOver(typed, target);
+      if (carryValue) {
+        try {
+          carryValueOver(typed, target);
+        } catch {
+          // Best effort, and deliberately swallowed: the keyboard has already
+          // changed hands by this point, so throwing would abandon the session
+          // mid-flight — active, with focus on the target and nothing left to
+          // close it. The `input` event is dispatched into application code
+          // here, so the throw is usually not even ours.
+        }
+      }
       decoy.value = "";
       const stillFocused = hasFocus(target);
       end();
@@ -193,6 +277,10 @@ export function primeKeyboard(): KeyboardSession {
         options;
 
       const immediate = resolveTarget(target, root);
+      if (immediate === UNRESOLVABLE) {
+        session.cancel();
+        return Promise.resolve(false);
+      }
       if (immediate) {
         const result = session.handover(immediate, handoverOptions);
         if (!result) session.cancel();
@@ -208,7 +296,9 @@ export function primeKeyboard(): KeyboardSession {
 
         function check() {
           if (!active) return finish(false);
+
           const found = resolveTarget(target, root);
+          if (found === UNRESOLVABLE) return finish(false, true);
           if (!found) return;
 
           // Remove the end listener first: handover() ends the session on
