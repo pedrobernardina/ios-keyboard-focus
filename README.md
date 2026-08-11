@@ -353,17 +353,18 @@ There is no dedicated `gh pages` command; Pages is managed through `gh api`.
 
 ## Support
 
-This scratches an itch I hit in production, and it is published because it
-might scratch yours.
+This library began with a highly scientific validation process:
 
-For the first few weeks I will be watching the repo, so open an issue or a PR
-if you want to collaborate — that is genuinely welcome while the API is still
-settling. After that, expect no active support. The library is small enough
-that maintaining it should not be a job, and honestly I do not expect this to
-scale to where it would become one.
+> It works on my phone.
 
-So if it breaks for you and I am not around: fork it, vendor it, copy the parts
-that matter. It is MIT, that is the point.
+I have tested it on recent iOS versions and it has behaved well so far. But
+Safari being Safari, I make no promises that some obscure combination of iOS
+version, WebView, iframe, animation timing, or cosmic alignment will not break
+it.
+
+If it works for you, great. If it does not, open an issue or a PR — or fork it,
+patch it, vendor it, and copy whatever parts are useful. It is MIT licensed;
+that is the point.
 
 ## License
 
