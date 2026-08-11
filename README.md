@@ -190,8 +190,17 @@ server-rendered code paths.
 ### `session.handover(element, options?): boolean`
 
 Moves focus to the real field. Returns `true` only if the element actually
-received focus. Returns `false` if the session is no longer active or the
-element could not be focused.
+received focus. Returns `false`, without touching focus, if the session is no
+longer active or if the target is not a field that can hold a keyboard — a
+button, a `type="file"` input, a readonly field. Focusing one of those would
+dismiss the keyboard irreversibly, so it is refused rather than reported as a
+handover that worked.
+
+Accepted targets are `<textarea>`, `contenteditable` elements, and `<input>`
+of type `text`, `search`, `email`, `url`, `tel`, `password` or `number`.
+
+A `false` leaves the session alive, so you can call `handover` again with the
+right element.
 
 | Option | Default | Description |
 | --- | --- | --- |

@@ -65,6 +65,54 @@ function resolveTarget(
   return root.querySelector<HTMLElement>(target);
 }
 
+/**
+ * Input types that bring up a text keyboard. Others either open a picker
+ * (`date`, `color`), open a file dialog (`file`), or are not editable at all
+ * (`checkbox`, `button`) — focusing any of them dismisses the keyboard instead
+ * of inheriting it. Unknown `type` values report as `text`, so they land here.
+ */
+const KEYBOARD_INPUT_TYPES = new Set([
+  "text",
+  "search",
+  "email",
+  "url",
+  "tel",
+  "password",
+  "number",
+]);
+
+/**
+ * Whether focusing this element would keep the keyboard on screen.
+ *
+ * The handover only works between two fields that take text. Anything else is
+ * a "text field → nothing" transition as far as iOS is concerned, and that
+ * dismisses the keyboard for good — no gesture is left to reopen it.
+ */
+function canHoldKeyboard(target: HTMLElement): boolean {
+  // isContentEditable is authoritative — it accounts for editability inherited
+  // from an ancestor — but not every DOM implementation provides it, so the
+  // attribute is checked as a fallback. An empty value means true; only
+  // "false" turns it off.
+  if (target.isContentEditable) return true;
+  const editable = target.getAttribute("contenteditable");
+  if (editable === "" || editable === "true" || editable === "plaintext-only") {
+    return true;
+  }
+
+  // Tag names rather than instanceof: a target can come from an iframe, and so
+  // belong to a different JavaScript realm.
+  const tag = target.tagName;
+  if (tag !== "INPUT" && tag !== "TEXTAREA") return false;
+
+  const field = target as HTMLInputElement | HTMLTextAreaElement;
+  // A readonly field takes focus without opening a keyboard, and a disabled
+  // one takes no focus at all.
+  if (field.readOnly || field.disabled) return false;
+
+  return tag === "TEXTAREA" ||
+    KEYBOARD_INPUT_TYPES.has((field as HTMLInputElement).type);
+}
+
 function hasFocus(element: HTMLElement): boolean {
   const root = element.getRootNode();
   return "activeElement" in root &&
@@ -158,6 +206,13 @@ export function primeKeyboard(): KeyboardSession {
 
     handover(target, options = {}) {
       if (!active || !target) return false;
+
+      // Refuse before touching focus. Moving it to something that cannot hold
+      // a keyboard would dismiss it irreversibly, and reporting that as a
+      // successful handover would be a lie — the field is focused, the
+      // keyboard is gone. Leaving the decoy focused keeps the session usable
+      // for a retry with the right target.
+      if (!canHoldKeyboard(target)) return false;
 
       const { carryValue = true, preventScroll } = options;
       const typed = decoy.value;

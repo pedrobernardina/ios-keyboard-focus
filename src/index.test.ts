@@ -223,6 +223,81 @@ describe("handover", () => {
   });
 });
 
+describe("targets that cannot hold the keyboard", () => {
+  const cases: Array<[string, () => HTMLElement]> = [
+    ["a button", () => document.createElement("button")],
+    ["a div", () => document.createElement("div")],
+    ["an element with contenteditable=false", () => {
+      const div = document.createElement("div");
+      div.setAttribute("contenteditable", "false");
+      return div;
+    }],
+    ["a file input", () => {
+      const input = document.createElement("input");
+      input.type = "file";
+      return input;
+    }],
+    ["a checkbox", () => {
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      return input;
+    }],
+    ["a readonly field", () => {
+      const input = document.createElement("input");
+      input.readOnly = true;
+      return input;
+    }],
+    ["a disabled field", () => {
+      const input = document.createElement("input");
+      input.disabled = true;
+      return input;
+    }],
+  ];
+
+  for (const [name, create] of cases) {
+    it(`refuses ${name} without touching focus`, () => {
+      const target = create();
+      document.body.appendChild(target);
+
+      const session = primeKeyboard();
+
+      // Reported as a failure rather than as a handover that dismissed the
+      // keyboard, and the session survives for a retry with a real field.
+      expect(session.handover(target)).toBe(false);
+      expect(session.active).toBe(true);
+      expect(document.activeElement).toBe(decoyEl());
+    });
+  }
+
+  const accepted: Array<[string, () => HTMLElement]> = [
+    ["a textarea", () => document.createElement("textarea")],
+    ["an email input", () => {
+      const input = document.createElement("input");
+      input.type = "email";
+      return input;
+    }],
+    ["a contenteditable element", () => {
+      const div = document.createElement("div");
+      // setAttribute rather than the property: happy-dom does not implement
+      // the contentEditable setter, and this is what the library reads anyway.
+      div.setAttribute("contenteditable", "true");
+      return div;
+    }],
+  ];
+
+  for (const [name, create] of accepted) {
+    it(`accepts ${name}`, () => {
+      const target = create();
+      document.body.appendChild(target);
+
+      const session = primeKeyboard();
+
+      expect(session.handover(target)).toBe(true);
+      expect(document.activeElement).toBe(target);
+    });
+  }
+});
+
 describe("handoverWhen", () => {
   it("hands over immediately when the field is already there", async () => {
     const input = document.createElement("input");
