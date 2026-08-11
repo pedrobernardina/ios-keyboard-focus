@@ -13,7 +13,7 @@ Open the iOS on-screen keyboard for an input that **does not exist yet**.
 npm i ios-keyboard-focus
 ```
 
-~1.5kB gzipped, zero dependencies, no framework required.
+~1.7kB gzipped, zero dependencies, no framework required.
 
 ## The problem
 
