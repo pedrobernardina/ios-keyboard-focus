@@ -145,7 +145,12 @@ function Search() {
 ```
 
 `register` is a callback ref, so the handover happens exactly when React
-attaches the node. Works with Preact through `preact/compat`.
+attaches the node. Requires React 18 or newer, and works with Preact through
+`preact/compat`.
+
+The core has no opinion about any of this — `primeKeyboard` and `handover` are
+plain DOM, so React is only ever a peer dependency of this one entry point, and
+an optional one.
 
 This entry point began as a proof that the handover survives a framework
 deciding when things mount, and it is tested and used on a device — but the

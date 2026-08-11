@@ -42,7 +42,7 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "peerDependencies": {
-    "react": ">=16.8"
+    "react": ">=18"
   },
   "peerDependenciesMeta": {
     "react": {
