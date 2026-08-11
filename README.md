@@ -216,6 +216,10 @@ outside the DOM. Adds `timeout` (default `5000`ms) and `root` (default
 `document.body`) to the options above. Resolves `false` and dismisses the
 keyboard if the timeout elapses.
 
+It never throws. A malformed selector or a getter that raises resolves `false`
+and dismisses the keyboard immediately, rather than waiting out a timeout for
+something that can never resolve.
+
 ### `session.cancel(): void`
 
 Dismisses the keyboard. Call it if the user closes the UI before the field ever

@@ -57,12 +57,26 @@ const DEAD_SESSION: KeyboardSession = {
   cancel: () => {},
 };
 
+/**
+ * Sentinel for a target that cannot be resolved at all — an invalid selector,
+ * or a getter that throws. Distinct from `null`, which only means "not there
+ * yet" and is worth waiting on.
+ */
+const UNRESOLVABLE = Symbol("unresolvable target");
+
 function resolveTarget(
   target: string | (() => HTMLElement | null | undefined),
   root: ParentNode,
-): HTMLElement | null {
-  if (typeof target === "function") return target() ?? null;
-  return root.querySelector<HTMLElement>(target);
+): HTMLElement | null | typeof UNRESOLVABLE {
+  try {
+    if (typeof target === "function") return target() ?? null;
+    return root.querySelector<HTMLElement>(target);
+  } catch {
+    // querySelector throws on a malformed selector, and a getter can throw for
+    // any reason of its own. Either way the target will never resolve, so
+    // waiting for it would strand the keyboard until the timeout.
+    return UNRESOLVABLE;
+  }
 }
 
 /**
@@ -263,6 +277,10 @@ export function primeKeyboard(): KeyboardSession {
         options;
 
       const immediate = resolveTarget(target, root);
+      if (immediate === UNRESOLVABLE) {
+        session.cancel();
+        return Promise.resolve(false);
+      }
       if (immediate) {
         const result = session.handover(immediate, handoverOptions);
         if (!result) session.cancel();
@@ -278,7 +296,9 @@ export function primeKeyboard(): KeyboardSession {
 
         function check() {
           if (!active) return finish(false);
+
           const found = resolveTarget(target, root);
+          if (found === UNRESOLVABLE) return finish(false, true);
           if (!found) return;
 
           // Remove the end listener first: handover() ends the session on

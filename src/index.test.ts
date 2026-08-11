@@ -416,6 +416,51 @@ describe("handoverWhen", () => {
   });
 });
 
+describe("handoverWhen never throws", () => {
+  it("gives up on a malformed selector instead of throwing at the call site", () => {
+    const session = primeKeyboard();
+
+    // It used to throw synchronously, from a method that returns a promise —
+    // so not even a .catch() could have caught it.
+    expect(() => session.handoverWhen("[")).not.toThrow();
+  });
+
+  it("dismisses the keyboard when the selector can never match", async () => {
+    const session = primeKeyboard();
+
+    await expect(session.handoverWhen("[")).resolves.toBe(false);
+    expect(session.active).toBe(false);
+  });
+
+  it("gives up when the getter throws", async () => {
+    const session = primeKeyboard();
+
+    await expect(session.handoverWhen(() => {
+      throw new Error("state blew up");
+    })).resolves.toBe(false);
+    expect(session.active).toBe(false);
+  });
+
+  it("gives up when a getter starts throwing only later", async () => {
+    vi.useFakeTimers();
+    let calls = 0;
+    const session = primeKeyboard();
+
+    const handedOver = session.handoverWhen(() => {
+      if (calls++ > 0) throw new Error("state blew up");
+      return null;
+    }, { timeout: 5000 });
+
+    // The first resolution returns null, so the wait starts; the throw only
+    // happens on a later poll, inside the promise.
+    await vi.advanceTimersByTimeAsync(100);
+
+    await expect(handedOver).resolves.toBe(false);
+    expect(session.active).toBe(false);
+    vi.useRealTimers();
+  });
+});
+
 describe("cancel", () => {
   it("blurs the decoy and ends the session", () => {
     const session = primeKeyboard();
