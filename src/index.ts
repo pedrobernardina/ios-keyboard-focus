@@ -1,12 +1,11 @@
-import { destroyDecoy, getDecoy } from "./decoy.js";
-
-export { destroyDecoy } from "./decoy.js";
+import { destroyDecoy as removeDecoy, getDecoy } from "./decoy.js";
 
 export interface HandoverOptions {
   /**
    * If the real field is empty, copy whatever the user typed into the decoy
    * and dispatch an `input` event so frameworks notice. Existing values are
-   * never overwritten. Defaults to `true`.
+   * never overwritten, and values rejected by the target's input type cannot
+   * be carried. Defaults to `true`.
    */
   carryValue?: boolean;
   /**
@@ -50,6 +49,15 @@ export interface KeyboardSession {
 /** Only one session can hold the keyboard; a newer one supersedes the older. */
 let endCurrentSession: (() => void) | null = null;
 
+/**
+ * Removes the decoy and ends any session that still depends on it.
+ * Mostly useful in tests — applications normally reuse the single node.
+ */
+export function destroyDecoy(): void {
+  endCurrentSession?.();
+  removeDecoy();
+}
+
 const DEAD_SESSION: KeyboardSession = {
   active: false,
   handover: () => false,
@@ -67,10 +75,25 @@ const UNRESOLVABLE = Symbol("unresolvable target");
 function resolveTarget(
   target: string | (() => HTMLElement | null | undefined),
   root: ParentNode,
+  decoy: HTMLInputElement,
 ): HTMLElement | null | typeof UNRESOLVABLE {
   try {
-    if (typeof target === "function") return target() ?? null;
-    return root.querySelector<HTMLElement>(target);
+    if (typeof target === "function") {
+      const resolved = target() ?? null;
+      return resolved === decoy ? null : resolved;
+    }
+
+    // A broad selector such as "input" also matches the library's own decoy,
+    // which is necessarily already in the DOM. Keep looking for the first real
+    // target instead of handing the keyboard back to the implementation detail
+    // that already owns it.
+    const first = root.querySelector<HTMLElement>(target);
+    if (first !== decoy) return first;
+
+    for (const candidate of root.querySelectorAll<HTMLElement>(target)) {
+      if (candidate !== decoy) return candidate;
+    }
+    return null;
   } catch {
     // querySelector throws on a malformed selector, and a getter can throw for
     // any reason of its own. Either way the target will never resolve, so
@@ -95,6 +118,17 @@ const KEYBOARD_INPUT_TYPES = new Set([
   "number",
 ]);
 
+function isContentEditableTarget(target: HTMLElement): boolean {
+  // isContentEditable is authoritative — it accounts for editability inherited
+  // from an ancestor — but not every DOM implementation provides it, so the
+  // attribute is checked as a fallback. An empty value means true; only
+  // "false" turns it off.
+  if (target.isContentEditable) return true;
+  const editable = target.getAttribute("contenteditable");
+  return editable === "" || editable === "true" ||
+    editable === "plaintext-only";
+}
+
 /**
  * Whether focusing this element would keep the keyboard on screen.
  *
@@ -103,15 +137,7 @@ const KEYBOARD_INPUT_TYPES = new Set([
  * dismisses the keyboard for good — no gesture is left to reopen it.
  */
 function canHoldKeyboard(target: HTMLElement): boolean {
-  // isContentEditable is authoritative — it accounts for editability inherited
-  // from an ancestor — but not every DOM implementation provides it, so the
-  // attribute is checked as a fallback. An empty value means true; only
-  // "false" turns it off.
-  if (target.isContentEditable) return true;
-  const editable = target.getAttribute("contenteditable");
-  if (editable === "" || editable === "true" || editable === "plaintext-only") {
-    return true;
-  }
+  if (isContentEditableTarget(target)) return true;
 
   // Tag names rather than instanceof: a target can come from an iframe, and so
   // belong to a different JavaScript realm.
@@ -139,24 +165,29 @@ function carryValueOver(typed: string, target: HTMLElement): void {
   // Avoid instanceof: a target can come from an iframe and therefore belong
   // to a different JavaScript realm.
   const isTextField = target.tagName === "INPUT" || target.tagName === "TEXTAREA";
-  if (!isTextField) return;
+  if (isTextField) {
+    const textField = target as HTMLInputElement | HTMLTextAreaElement;
+    if (textField.value) return;
+    // React installs an own `value` setter that updates its value tracker. Using
+    // the native prototype setter changes the DOM without pre-emptively telling
+    // React about it, so the input event below is observed as a real change.
+    const prototype = textField.tagName === "INPUT"
+      ? textField.ownerDocument.defaultView?.HTMLInputElement.prototype
+      : textField.ownerDocument.defaultView?.HTMLTextAreaElement.prototype;
+    const nativeSetter = prototype &&
+      Object.getOwnPropertyDescriptor(prototype, "value")?.set;
 
-  const textField = target as HTMLInputElement | HTMLTextAreaElement;
-  if (textField.value) return;
-  // React installs an own `value` setter that updates its value tracker. Using
-  // the native prototype setter changes the DOM without pre-emptively telling
-  // React about it, so the input event below is observed as a real change.
-  const prototype = textField.tagName === "INPUT"
-    ? textField.ownerDocument.defaultView?.HTMLInputElement.prototype
-    : textField.ownerDocument.defaultView?.HTMLTextAreaElement.prototype;
-  const nativeSetter = prototype &&
-    Object.getOwnPropertyDescriptor(prototype, "value")?.set;
+    if (nativeSetter) nativeSetter.call(textField, typed);
+    else textField.value = typed;
+  } else if (isContentEditableTarget(target)) {
+    if (target.textContent) return;
+    target.textContent = typed;
+  } else {
+    return;
+  }
 
-  if (nativeSetter) nativeSetter.call(textField, typed);
-  else textField.value = typed;
-
-  const EventConstructor = textField.ownerDocument.defaultView?.Event ?? Event;
-  textField.dispatchEvent(new EventConstructor("input", { bubbles: true }));
+  const EventConstructor = target.ownerDocument.defaultView?.Event ?? Event;
+  target.dispatchEvent(new EventConstructor("input", { bubbles: true }));
 }
 
 /**
@@ -221,6 +252,10 @@ export function primeKeyboard(): KeyboardSession {
     handover(target, options = {}) {
       if (!active || !target) return false;
 
+      // The decoy is a text input too, but handing over to it would end the
+      // session while leaving the keyboard attached to an invisible field.
+      if (target === decoy) return false;
+
       // Refuse before touching focus. Moving it to something that cannot hold
       // a keyboard would dismiss it irreversibly, and reporting that as a
       // successful handover would be a lie — the field is focused, the
@@ -237,10 +272,8 @@ export function primeKeyboard(): KeyboardSession {
       try {
         target.focus({ preventScroll });
       } catch {
-        // A target whose focus() throws never took the keyboard. Reporting it
-        // as a failure keeps this method's contract — it answers with a
-        // boolean, it does not throw — and leaves the decoy holding focus.
-        return false;
+        // Some wrappers call the native focus() and only then throw. Focus
+        // state, not the exception, decides whether the handover succeeded.
       } finally {
         handingOver = false;
       }
@@ -276,7 +309,7 @@ export function primeKeyboard(): KeyboardSession {
       const { timeout = 5000, root = document.body, ...handoverOptions } =
         options;
 
-      const immediate = resolveTarget(target, root);
+      const immediate = resolveTarget(target, root, decoy);
       if (immediate === UNRESOLVABLE) {
         session.cancel();
         return Promise.resolve(false);
@@ -297,7 +330,7 @@ export function primeKeyboard(): KeyboardSession {
         function check() {
           if (!active) return finish(false);
 
-          const found = resolveTarget(target, root);
+          const found = resolveTarget(target, root, decoy);
           if (found === UNRESOLVABLE) return finish(false, true);
           if (!found) return;
 

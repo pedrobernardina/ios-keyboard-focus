@@ -158,4 +158,45 @@ describe("register", () => {
 
     expect(session.active).toBe(false);
   });
+
+  it("does not discard a newer session created by a focus handler", () => {
+    let keyboard: UseKeyboardFocus | null = null;
+    let replacement: ReturnType<UseKeyboardFocus["prime"]> | null = null;
+
+    function App() {
+      const [open, setOpen] = useState(false);
+      keyboard = useKeyboardFocus();
+
+      return (
+        <>
+          <button type="button" onClick={() => setOpen(true)} />
+          {open && (
+            <input
+              ref={keyboard.register}
+              onFocus={() => {
+                replacement = keyboard!.prime();
+              }}
+            />
+          )}
+        </>
+      );
+    }
+
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    root = createRoot(host);
+    act(() => root!.render(<App />));
+
+    act(() => {
+      keyboard!.prime();
+      host.querySelector("button")!.click();
+    });
+
+    expect(replacement).not.toBeNull();
+    expect(replacement!.active).toBe(true);
+
+    act(() => keyboard!.cancel());
+
+    expect(replacement!.active).toBe(false);
+  });
 });

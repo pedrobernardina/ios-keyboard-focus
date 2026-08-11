@@ -39,35 +39,36 @@ export function getDecoy(): HTMLInputElement | null {
   if (typeof document === "undefined") return null;
   if (decoy?.isConnected) return decoy;
 
-  decoy = document.createElement("input");
-  decoy.type = "text";
-  decoy.tabIndex = -1;
+  const element = document.createElement("input");
+  decoy = element;
+  element.type = "text";
+  element.tabIndex = -1;
   // Hidden FROM screen readers, which is the opposite of an sr-only element:
   // this field is an implementation detail, not content.
-  decoy.setAttribute("aria-hidden", "true");
-  decoy.setAttribute("autocomplete", "off");
-  decoy.setAttribute("autocorrect", "off");
-  decoy.setAttribute("autocapitalize", "off");
-  decoy.setAttribute("spellcheck", "false");
-  decoy.setAttribute("data-ios-keyboard-focus-decoy", "");
+  element.setAttribute("aria-hidden", "true");
+  element.setAttribute("autocomplete", "off");
+  element.setAttribute("autocorrect", "off");
+  element.setAttribute("autocapitalize", "off");
+  element.setAttribute("spellcheck", "false");
+  element.setAttribute("data-ios-keyboard-focus-decoy", "");
 
   // !important because this node lands in someone else's page: a global
   // `input { opacity: 1 }` in their stylesheet would otherwise reveal a stray
   // text field in the corner of every screen.
   for (const [property, value] of HIDDEN_STYLE) {
-    decoy.style.setProperty(property, value, "important");
+    element.style.setProperty(property, value, "important");
   }
 
   // Anything typed before the handover lives here. Once the field loses focus
   // the session is over one way or another, so there is no reason to keep the
   // text sitting in the DOM.
-  decoy.addEventListener("blur", () => {
-    decoy!.value = "";
+  element.addEventListener("blur", () => {
+    element.value = "";
   });
 
-  document.body.appendChild(decoy);
+  document.body.appendChild(element);
 
-  return decoy;
+  return element;
 }
 
 /**
@@ -75,6 +76,7 @@ export function getDecoy(): HTMLInputElement | null {
  * application the single reused node costs nothing.
  */
 export function destroyDecoy(): void {
+  if (decoy) decoy.value = "";
   decoy?.remove();
   decoy = null;
 }

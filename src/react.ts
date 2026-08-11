@@ -31,8 +31,7 @@ export interface UseKeyboardFocus {
  * {open && <input ref={register} />}
  * ```
  *
- * Works with Preact through `preact/compat`, since it only uses `useRef` and
- * `useCallback`.
+ * Works with Preact through `preact/compat`, since it only uses standard hooks.
  */
 export function useKeyboardFocus(
   options: HandoverOptions = {},
@@ -59,7 +58,10 @@ export function useKeyboardFocus(
     // reference there would leave nothing able to close it: neither cancel()
     // nor the unmount cleanup below, which is how a modal that closes early
     // used to strand the keyboard over a screen that no longer exists.
-    if (session.handover(node, optionsRef.current) || !session.active) {
+    if (
+      (session.handover(node, optionsRef.current) || !session.active) &&
+      sessionRef.current === session
+    ) {
       sessionRef.current = null;
     }
   }, []);

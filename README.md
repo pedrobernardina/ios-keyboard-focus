@@ -209,7 +209,7 @@ right element.
 
 | Option | Default | Description |
 | --- | --- | --- |
-| `carryValue` | `true` | Copies text typed into the decoy when the real field is empty, and dispatches an `input` event. Existing values are never overwritten. |
+| `carryValue` | `true` | Copies text typed into an empty input, textarea or `contenteditable`, and dispatches an `input` event. Existing values are never overwritten; values rejected by an input type cannot be carried. |
 | `preventScroll` | `false` | Passed to `focus()`. |
 
 ### `session.handoverWhen(target, options?): Promise<boolean>`
@@ -220,6 +220,9 @@ are additionally checked once per animation frame, so they may depend on state
 outside the DOM. Adds `timeout` (default `5000`ms) and `root` (default
 `document.body`) to the options above. Resolves `false` and dismisses the
 keyboard if the timeout elapses.
+
+The library's own decoy is never considered a target, even when a broad
+selector such as `"input"` matches it.
 
 It never throws. A malformed selector or a getter that raises resolves `false`
 and dismisses the keyboard immediately, rather than waiting out a timeout for
@@ -237,7 +240,7 @@ appeared.
 
 ### `destroyDecoy(): void`
 
-Removes the decoy node. Only useful in tests.
+Ends any active session and removes the decoy node. Only useful in tests.
 
 ## What it puts in your page
 
@@ -273,9 +276,9 @@ dependencies. It touches the DOM exclusively when you call it.
 
 ## Demos
 
-Two builds of the same four scenarios — modal, side sheet, deferred mount,
-inline expand — each with a toggle to turn priming off so you can feel the bug
-it fixes:
+Two builds of the same eight scenarios, covering immediate and deferred fields,
+attribute and state readiness, failure, cancellation and inline expansion. Each
+has a toggle to turn priming off so you can feel the bug it fixes:
 
 - **[Vanilla](https://pedrobernardina.github.io/ios-keyboard-focus/vanilla/)** — plain DOM
 - **[React](https://pedrobernardina.github.io/ios-keyboard-focus/react/)** — the `useKeyboardFocus` hook

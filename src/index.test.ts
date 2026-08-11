@@ -164,6 +164,34 @@ describe("handover", () => {
     expect(input.value).toBe("existing");
   });
 
+  it("carries typed text into an empty contenteditable target", () => {
+    const target = document.createElement("div");
+    target.setAttribute("contenteditable", "true");
+    document.body.appendChild(target);
+    const onInput = vi.fn();
+    target.addEventListener("input", onInput);
+
+    const session = primeKeyboard();
+    decoyEl()!.value = "editable text";
+
+    expect(session.handover(target)).toBe(true);
+    expect(target.textContent).toBe("editable text");
+    expect(onInput).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not overwrite a contenteditable target that already has text", () => {
+    const target = document.createElement("div");
+    target.setAttribute("contenteditable", "true");
+    target.textContent = "existing";
+    document.body.appendChild(target);
+
+    const session = primeKeyboard();
+    decoyEl()!.value = "typed";
+
+    expect(session.handover(target)).toBe(true);
+    expect(target.textContent).toBe("existing");
+  });
+
   it("can be told not to carry the value", () => {
     const input = document.createElement("input");
     document.body.appendChild(input);
@@ -257,6 +285,22 @@ describe("handover never throws", () => {
     expect(document.activeElement).toBe(input);
     expect(session.active).toBe(false);
   });
+
+  it("finishes successfully when focus moves before focus() throws", () => {
+    const input = document.createElement("input");
+    document.body.appendChild(input);
+    const nativeFocus = input.focus.bind(input);
+    vi.spyOn(input, "focus").mockImplementation(() => {
+      nativeFocus();
+      throw new Error("focus moved, then blew up");
+    });
+
+    const session = primeKeyboard();
+
+    expect(session.handover(input)).toBe(true);
+    expect(document.activeElement).toBe(input);
+    expect(session.active).toBe(false);
+  });
 });
 
 describe("targets that cannot hold the keyboard", () => {
@@ -304,6 +348,15 @@ describe("targets that cannot hold the keyboard", () => {
       expect(document.activeElement).toBe(decoyEl());
     });
   }
+
+  it("refuses to hand over to its own decoy", () => {
+    const session = primeKeyboard();
+    const decoy = decoyEl()!;
+
+    expect(session.handover(decoy)).toBe(false);
+    expect(session.active).toBe(true);
+    expect(document.activeElement).toBe(decoy);
+  });
 
   const accepted: Array<[string, () => HTMLElement]> = [
     ["a textarea", () => document.createElement("textarea")],
@@ -356,6 +409,18 @@ describe("handoverWhen", () => {
 
     await expect(handedOver).resolves.toBe(true);
     expect(document.activeElement).toBe(input);
+  });
+
+  it("skips the decoy when a broad selector also matches it", async () => {
+    const session = primeKeyboard();
+    const handedOver = session.handoverWhen("input");
+
+    const input = document.createElement("input");
+    document.body.appendChild(input);
+
+    await expect(handedOver).resolves.toBe(true);
+    expect(document.activeElement).toBe(input);
+    expect(session.active).toBe(false);
   });
 
   it("accepts a getter instead of a selector", async () => {
@@ -469,6 +534,26 @@ describe("cancel", () => {
 
     expect(document.activeElement).not.toBe(decoyEl());
     expect(session.active).toBe(false);
+  });
+});
+
+describe("destroyDecoy", () => {
+  it("ends the active session before removing its focused decoy", () => {
+    const session = primeKeyboard();
+
+    destroyDecoy();
+
+    expect(session.active).toBe(false);
+    expect(decoyEl()).toBeNull();
+  });
+
+  it("settles a pending handover", async () => {
+    const session = primeKeyboard();
+    const handedOver = session.handoverWhen("#never", { timeout: 60_000 });
+
+    destroyDecoy();
+
+    await expect(handedOver).resolves.toBe(false);
   });
 });
 
