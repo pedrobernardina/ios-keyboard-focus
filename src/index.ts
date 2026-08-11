@@ -222,6 +222,11 @@ export function primeKeyboard(): KeyboardSession {
       handingOver = true;
       try {
         target.focus({ preventScroll });
+      } catch {
+        // A target whose focus() throws never took the keyboard. Reporting it
+        // as a failure keeps this method's contract — it answers with a
+        // boolean, it does not throw — and leaves the decoy holding focus.
+        return false;
       } finally {
         handingOver = false;
       }
@@ -233,7 +238,17 @@ export function primeKeyboard(): KeyboardSession {
         return false;
       }
 
-      if (carryValue) carryValueOver(typed, target);
+      if (carryValue) {
+        try {
+          carryValueOver(typed, target);
+        } catch {
+          // Best effort, and deliberately swallowed: the keyboard has already
+          // changed hands by this point, so throwing would abandon the session
+          // mid-flight — active, with focus on the target and nothing left to
+          // close it. The `input` event is dispatched into application code
+          // here, so the throw is usually not even ours.
+        }
+      }
       decoy.value = "";
       const stillFocused = hasFocus(target);
       end();

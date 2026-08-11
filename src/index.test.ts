@@ -223,6 +223,42 @@ describe("handover", () => {
   });
 });
 
+describe("handover never throws", () => {
+  it("reports failure when focus() throws instead of propagating it", () => {
+    const input = document.createElement("input");
+    document.body.appendChild(input);
+    vi.spyOn(input, "focus").mockImplementation(() => {
+      throw new Error("focus blew up");
+    });
+
+    const session = primeKeyboard();
+
+    expect(() => session.handover(input)).not.toThrow();
+    expect(session.handover(input)).toBe(false);
+    // The keyboard never moved, so the session is still usable for a retry.
+    expect(session.active).toBe(true);
+    expect(document.activeElement).toBe(decoyEl());
+  });
+
+  it("survives an application input listener that throws", () => {
+    // Entirely plausible: carryValue dispatches `input` into application code,
+    // and a handler of theirs throwing used to abandon the session with focus
+    // already moved and nothing able to close the keyboard.
+    const input = document.createElement("input");
+    document.body.appendChild(input);
+    input.addEventListener("input", () => {
+      throw new Error("handler blew up");
+    });
+
+    const session = primeKeyboard();
+    decoyEl()!.value = "typed";
+
+    expect(() => session.handover(input)).not.toThrow();
+    expect(document.activeElement).toBe(input);
+    expect(session.active).toBe(false);
+  });
+});
+
 describe("targets that cannot hold the keyboard", () => {
   const cases: Array<[string, () => HTMLElement]> = [
     ["a button", () => document.createElement("button")],
